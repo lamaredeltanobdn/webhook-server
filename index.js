@@ -58,7 +58,7 @@ app.get('/test-order', async (req, res) => {
 
     console.log('==> Calling Uber orders API...');
     const orderRes = await fetch(
-      `https://api.uber.com/v1/eats/store/${process.env.UBER_STORE_UUID}/orders`,
+      `https://api.uber.com/v1/eats/orders`,
       {
         headers: {
           'Authorization': `Bearer ${access_token}`,
