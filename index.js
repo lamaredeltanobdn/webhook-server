@@ -57,4 +57,30 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get('/test-order', async (req, res) => {
+  try {
+    const params = new URLSearchParams();
+    params.append('client_id', process.env.UBER_CLIENT_ID);
+    params.append('client_secret', process.env.UBER_CLIENT_SECRET);
+    params.append('grant_type', 'client_credentials');
+    params.append('scope', 'eats.order eats.store eats.store.orders.read eats.store.status.write');
+
+    const tokenRes = await fetch('https://sandbox-login.uber.com/oauth/v2/token', {
+      method: 'POST',
+      body: params
+    });
+    const { access_token } = await tokenRes.json();
+
+    const orderRes = await fetch(`https://test-api.uber.com/v1/eats/orders`, {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const orders = await orderRes.json();
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.listen(PORT, () => console.log(`Servidor actiu al port ${PORT}`));
