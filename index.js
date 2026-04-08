@@ -51,7 +51,7 @@ app.get('/test-webhook', async (req, res) => {
       created_at: new Date().toISOString()
     }]);
     if (error) {
-      console.error('==> Supabase error:', error.message);
+      console.error('==> Supabase error full:', JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
 
