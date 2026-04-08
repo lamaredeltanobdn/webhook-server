@@ -71,7 +71,7 @@ app.get('/test-order', async (req, res) => {
     });
     const { access_token } = await tokenRes.json();
 
-    const orderRes = await fetch(`https://test-api.uber.com/v1/eats/orders`, {
+    const orderRes = await fetch(`https://test-api.uber.com/v1/eats/store/${process.env.UBER_STORE_UUID}/orders`, {
       headers: {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json'
