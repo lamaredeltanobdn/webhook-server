@@ -48,4 +48,54 @@ app.get('/test-order', async (req, res) => {
     const tokenData = await tokenRes.json();
     console.log('==> Token status:', tokenRes.status);
 
-    if (!tokenData.access_t
+    if (!tokenData.access_token) {
+      return res.status(500).json({ error: 'No access_token', details: tokenData });
+    }
+    console.log('==> Simulating sandbox order...');
+    const simRes = await fetch('https://test-api.uber.com/v1/eats/sandbox/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        store_id: process.env.UBER_STORE_UUID
+      })
+    });
+
+    const text = await simRes.text();
+    console.log('==> Sandbox order status:', simRes.status);
+    console.log('==> Sandbox order response:', text);
+    res.status(simRes.status).send(text);
+
+  } catch (err) {
+    console.error('==> ERROR:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/webhook', async (req, res) => {
+  try {
+    const event = req.body;
+    console.log('Evento rebut:', JSON.stringify(event));
+
+    if (event.event_type === 'orders.notification') {
+      const order = event.meta;
+      await supabase.from('pedidos_ubereats').insert([{
+        order_id: order.order_id,
+        store_id: order.store_id,
+        status: 'nuevo',
+        raw_data: event,
+        created_at: new Date().toISOString()
+      }]);
+    }
+res.status(200).json({ status: 'ok' });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor actiu al port ${PORT}`));    
+      
