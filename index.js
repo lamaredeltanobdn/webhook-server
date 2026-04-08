@@ -77,8 +77,8 @@ app.get('/test-order', async (req, res) => {
         'Content-Type': 'application/json'
       }
     });
-    const orders = await orderRes.json();
-    res.json(orders);
+    const text = await orderRes.text();
+    res.send(text);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
