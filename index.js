@@ -94,4 +94,4 @@ app.get('/test-webhook', async (req, res) => {
     }]);
 
     if (error) {
-      console.error('==> Supabase error f
+      console.error('==> Supabase error full:', JSON.stringify(error));
