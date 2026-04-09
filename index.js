@@ -19,7 +19,7 @@ app.get('/test-token', async (req, res) => {
     params.append('client_id', process.env.UBER_CLIENT_ID);
     params.append('client_secret', process.env.UBER_CLIENT_SECRET);
     params.append('grant_type', 'client_credentials');
-    params.append('scope', 'eats.order eats.store eats.store.orders.read eats.store.orders.cancel eats.store.status.write eats.pos_provisioning eats.report eats.store.orders.restaurantdelivery.status');
+    params.append('scope', 'eats.order eats.store eats.store.orders.read eats.store.orders.cancel eats.store.status.write');
     const response = await fetch('https://sandbox-login.uber.com/oauth/v2/token', { method: 'POST', body: params });
     const data = await response.json();
     res.json(data);
@@ -35,7 +35,7 @@ app.get('/test-order', async (req, res) => {
     params.append('client_id', process.env.UBER_CLIENT_ID);
     params.append('client_secret', process.env.UBER_CLIENT_SECRET);
     params.append('grant_type', 'client_credentials');
-    params.append('scope', 'eats.order eats.store eats.store.orders.read eats.store.orders.cancel eats.store.status.write eats.pos_provisioning eats.report eats.store.orders.restaurantdelivery.status');
+    params.append('scope', 'eats.order eats.store eats.store.orders.read eats.store.orders.cancel eats.store.status.write');
     const tokenRes = await fetch('https://sandbox-login.uber.com/oauth/v2/token', { method: 'POST', body: params });
     const tokenData = await tokenRes.json();
     console.log('==> Token status:', tokenRes.status);
