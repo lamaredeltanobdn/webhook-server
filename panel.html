@@ -3,13 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>La Mare del Tano — Panel de Pedidos</title>
+<title>La Mare del Tano — Panel</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
 body { background: #f5f5f5; color: #111; }
 .header { background: #000; color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
 .header h1 { font-size: 18px; font-weight: 600; }
 .header .sub { font-size: 13px; opacity: 0.6; margin-top: 2px; }
+.tabs { display: flex; background: #111; padding: 0 1.5rem; gap: 4px; }
+.tab { font-size: 14px; padding: 10px 20px; cursor: pointer; color: #aaa; border-bottom: 3px solid transparent; }
+.tab.active { color: #fff; border-bottom-color: #fff; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 1.25rem 1.5rem; background: #fff; border-bottom: 1px solid #eee; }
 .stat { background: #f9f9f9; border-radius: 8px; padding: 1rem; }
 .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
@@ -35,13 +38,44 @@ body { background: #f5f5f5; color: #111; }
 .btn { font-size: 12px; padding: 5px 14px; border-radius: 8px; border: 1px solid #ddd; background: transparent; cursor: pointer; color: #555; }
 .btn:hover { background: #f0f0f0; }
 .btn.primary { background: #000; color: #fff; border-color: #000; }
+.carta-toolbar { padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #eee; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.carta-toolbar input { font-size: 13px; padding: 6px 12px; border: 1px solid #ddd; border-radius: 8px; width: 220px; }
+.carta-toolbar select { font-size: 13px; padding: 6px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; }
+.carta-content { padding: 1.25rem 1.5rem; }
+.cat-title { font-size: 14px; font-weight: 700; color: #333; margin: 1.5rem 0 0.75rem; padding-bottom: 6px; border-bottom: 2px solid #eee; text-transform: uppercase; letter-spacing: 0.5px; }
+.cat-title:first-child { margin-top: 0; }
+.producto { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+.producto.inactivo { opacity: 0.45; }
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 22px; cursor: pointer; transition: 0.2s; }
+.toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+.toggle input:checked + .toggle-slider { background: #111; }
+.toggle input:checked + .toggle-slider:before { transform: translateX(18px); }
+.prod-info { flex: 1; min-width: 0; }
+.prod-nombre { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-desc { font-size: 12px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 500; }
+.tag-picante { background: #FEE2E2; color: #991B1B; }
+.tag-vegano { background: #DCFCE7; color: #166534; }
+.tag-vegetariano { background: #D1FAE5; color: #065F46; }
+.tag-singluten { background: #FEF9C3; color: #854D0E; }
+.prod-precio { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.prod-precio input { width: 70px; font-size: 14px; font-weight: 600; text-align: right; border: 1px solid #ddd; border-radius: 6px; padding: 4px 6px; }
+.prod-precio input:focus { outline: none; border-color: #000; }
+.prod-precio span { font-size: 13px; color: #888; }
+.save-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; background: #000; color: #fff; cursor: pointer; display: none; }
+.save-btn.visible { display: block; }
 .empty { text-align: center; padding: 3rem; color: #888; }
 .loading { text-align: center; padding: 2rem; color: #888; }
 .error { text-align: center; padding: 2rem; color: #E24B4A; }
-@media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.hidden { display: none; }
+@media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } .prod-desc { display: none; } }
 </style>
 </head>
 <body>
+
 <div class="header">
   <div>
     <h1>La Mare del Tano</h1>
@@ -49,99 +83,189 @@ body { background: #f5f5f5; color: #111; }
   </div>
   <div style="font-size:13px;opacity:0.7">Uber Eats</div>
 </div>
-<div class="stats">
-  <div class="stat"><div class="stat-label">Total hoy</div><div class="stat-value" id="s-total">—</div></div>
-  <div class="stat"><div class="stat-label">Nuevos</div><div class="stat-value" id="s-nuevo">—</div></div>
-  <div class="stat"><div class="stat-label">Preparando</div><div class="stat-value" id="s-prep">—</div></div>
-  <div class="stat"><div class="stat-label">Entregados</div><div class="stat-value" id="s-ent">—</div></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('pedidos', this)">Pedidos</div>
+  <div class="tab" onclick="showTab('carta', this)">Carta</div>
 </div>
-<div class="filters">
-  <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
-  <button class="filter-btn" onclick="setFilter('nuevo',this)">Nuevos</button>
-  <button class="filter-btn" onclick="setFilter('preparando',this)">Preparando</button>
-  <button class="filter-btn" onclick="setFilter('listo',this)">Listos</button>
-  <button class="filter-btn" onclick="setFilter('entregado',this)">Entregados</button>
-  <button class="refresh-btn" onclick="load()">Actualizar</button>
+
+<div id="tab-pedidos">
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total hoy</div><div class="stat-value" id="s-total">—</div></div>
+    <div class="stat"><div class="stat-label">Nuevos</div><div class="stat-value" id="s-nuevo">—</div></div>
+    <div class="stat"><div class="stat-label">Preparando</div><div class="stat-value" id="s-prep">—</div></div>
+    <div class="stat"><div class="stat-label">Entregados</div><div class="stat-value" id="s-ent">—</div></div>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
+    <button class="filter-btn" onclick="setFilter('nuevo',this)">Nuevos</button>
+    <button class="filter-btn" onclick="setFilter('preparando',this)">Preparando</button>
+    <button class="filter-btn" onclick="setFilter('listo',this)">Listos</button>
+    <button class="filter-btn" onclick="setFilter('entregado',this)">Entregados</button>
+    <button class="refresh-btn" onclick="loadPedidos()">Actualizar</button>
+  </div>
+  <div class="orders" id="orders"><div class="loading">Conectando...</div></div>
 </div>
-<div class="orders" id="orders"><div class="loading">Conectando...</div></div>
+
+<div id="tab-carta" class="hidden">
+  <div class="carta-toolbar">
+    <input type="text" id="carta-search" placeholder="Buscar producto..." oninput="renderCarta()">
+    <select id="carta-filter" onchange="renderCarta()">
+      <option value="todos">Todos</option>
+      <option value="activos">Activos</option>
+      <option value="inactivos">Inactivos</option>
+    </select>
+    <button class="refresh-btn" onclick="loadCarta()">Actualizar</button>
+  </div>
+  <div class="carta-content" id="carta-content"><div class="loading">Cargando carta...</div></div>
+</div>
+
 <script>
 const SUPA_URL = 'https://viprsyiyapzcgmlqucvk.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcHJzeWl5YXB6Y2dtbHF1Y3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjg0MzcsImV4cCI6MjA5MDcwNDQzN30.3vyiXkGk55bb-sBCeNNRRzMBWDLcRejMwGQcvq2reV0';
-let all = [], filter = 'todos';
+
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-pedidos').classList.add('hidden');
+  document.getElementById('tab-carta').classList.add('hidden');
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+  if (tab === 'carta' && cartaData.length === 0) loadCarta();
+}
+
+let allPedidos = [], filter = 'todos';
 const sLabels = {nuevo:'Nuevo',preparando:'Preparando',listo:'Listo',entregado:'Entregado'};
 const nxt = {nuevo:'preparando',preparando:'listo',listo:'entregado'};
 const nxtL = {nuevo:'Preparando',preparando:'Listo',listo:'Entregado'};
 
 function sid(id){ return id ? id.substring(0,8)+'...' : 'Sin ID'; }
 function fmt(ts){ return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
-function setFilter(f,btn){ filter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+function setFilter(f,btn){ filter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderPedidos(); }
 
 async function upd(id, st) {
   await fetch(SUPA_URL + '/rest/v1/pedidos_ubereats?id=eq.' + id, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify({status: st})
   });
-  load();
+  loadPedidos();
 }
 
 function cardHTML(o) {
   const nextStatus = nxt[o.status];
   const nextLabel = nxtL[o.status];
   let actions = '';
-  if (nextStatus) {
-    actions += '<button class="btn primary" onclick="upd(' + o.id + ',\'' + nextStatus + '\')">' + nextLabel + '</button>';
-  }
-  if (o.status !== 'entregado') {
-    actions += '<button class="btn" onclick="upd(' + o.id + ',\'entregado\')">Entregado</button>';
-  }
-  return '<div class="card">' +
-    '<div class="card-header">' +
-      '<span class="order-id">#' + sid(o.order_id) + '</span>' +
-      '<span class="order-time">' + fmt(o.created_at) + '</span>' +
-    '</div>' +
-    '<div class="order-store">' + sid(o.store_id) + '</div>' +
-    '<div class="card-footer">' +
-      '<span class="badge b-' + o.status + '">' + sLabels[o.status] + '</span>' +
-      '<div class="actions">' + actions + '</div>' +
-    '</div>' +
-  '</div>';
+  if (nextStatus) actions += '<button class="btn primary" onclick="upd(' + o.id + ',\'' + nextStatus + '\')">' + nextLabel + '</button>';
+  if (o.status !== 'entregado') actions += '<button class="btn" onclick="upd(' + o.id + ',\'entregado\')">Entregado</button>';
+  return '<div class="card"><div class="card-header"><span class="order-id">#' + sid(o.order_id) + '</span><span class="order-time">' + fmt(o.created_at) + '</span></div><div class="order-store">' + sid(o.store_id) + '</div><div class="card-footer"><span class="badge b-' + o.status + '">' + sLabels[o.status] + '</span><div class="actions">' + actions + '</div></div></div>';
 }
 
-function render() {
+function renderPedidos() {
   const today = new Date().toDateString();
-  const td = all.filter(o => new Date(o.created_at).toDateString() === today);
+  const td = allPedidos.filter(o => new Date(o.created_at).toDateString() === today);
   document.getElementById('s-total').textContent = td.length;
   document.getElementById('s-nuevo').textContent = td.filter(o => o.status === 'nuevo').length;
   document.getElementById('s-prep').textContent = td.filter(o => o.status === 'preparando').length;
   document.getElementById('s-ent').textContent = td.filter(o => o.status === 'entregado').length;
-  const list = filter === 'todos' ? all : all.filter(o => o.status === filter);
+  const list = filter === 'todos' ? allPedidos : allPedidos.filter(o => o.status === filter);
   const el = document.getElementById('orders');
   if (!list.length) { el.innerHTML = '<div class="empty">No hay pedidos</div>'; return; }
   el.innerHTML = list.map(cardHTML).join('');
 }
 
-async function load() {
+async function loadPedidos() {
   try {
     const r = await fetch(SUPA_URL + '/rest/v1/pedidos_ubereats?select=*&order=created_at.desc&limit=50', {
       headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY}
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    all = await r.json();
+    allPedidos = await r.json();
     document.getElementById('last-update').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-ES');
-    render();
+    renderPedidos();
   } catch(e) {
     document.getElementById('orders').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
   }
 }
 
-load();
-setInterval(load, 30000);
+let cartaData = [];
+
+async function loadCarta() {
+  document.getElementById('carta-content').innerHTML = '<div class="loading">Cargando carta...</div>';
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/carta?select=*&order=categoria,nombre', {
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY}
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    cartaData = await r.json();
+    renderCarta();
+  } catch(e) {
+    document.getElementById('carta-content').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderCarta() {
+  const search = document.getElementById('carta-search').value.toLowerCase();
+  const filterVal = document.getElementById('carta-filter').value;
+  let items = cartaData.filter(p => {
+    const matchSearch = !search || p.nombre.toLowerCase().includes(search) || (p.descripcion && p.descripcion.toLowerCase().includes(search));
+    const matchFilter = filterVal === 'todos' || (filterVal === 'activos' && p.activo) || (filterVal === 'inactivos' && !p.activo);
+    return matchSearch && matchFilter;
+  });
+  if (!items.length) { document.getElementById('carta-content').innerHTML = '<div class="empty">No hay productos</div>'; return; }
+  const cats = [...new Set(items.map(p => p.categoria))];
+  let html = '';
+  cats.forEach(cat => {
+    html += '<div class="cat-title">' + cat + '</div>';
+    items.filter(p => p.categoria === cat).forEach(p => {
+      const tags = (p.picante ? '<span class="tag tag-picante">🌶 Picante</span>' : '') +
+                   (p.vegano ? '<span class="tag tag-vegano">🌱 Vegano</span>' : '') +
+                   (p.vegetariano && !p.vegano ? '<span class="tag tag-vegetariano">🥗 Vegetarià</span>' : '') +
+                   (p.sin_gluten ? '<span class="tag tag-singluten">🌾 Sense gluten</span>' : '');
+      html += '<div class="producto' + (p.activo ? '' : ' inactivo') + '" id="prod-' + p.id + '">' +
+        '<label class="toggle"><input type="checkbox"' + (p.activo ? ' checked' : '') + ' onchange="toggleProducto(' + p.id + ', this.checked)"><span class="toggle-slider"></span></label>' +
+        '<div class="prod-info"><div class="prod-nombre">' + p.nombre + '</div>' +
+        (p.descripcion ? '<div class="prod-desc">' + p.descripcion + '</div>' : '') +
+        (tags ? '<div class="prod-tags">' + tags + '</div>' : '') + '</div>' +
+        '<div class="prod-precio">' +
+        '<input type="number" step="0.1" value="' + p.precio + '" id="precio-' + p.id + '" onchange="precioChanged(' + p.id + ')">' +
+        '<span>€</span>' +
+        '<button class="save-btn" id="save-' + p.id + '" onclick="savePrecio(' + p.id + ')">Guardar</button>' +
+        '</div></div>';
+    });
+  });
+  document.getElementById('carta-content').innerHTML = html;
+}
+
+async function toggleProducto(id, activo) {
+  const el = document.getElementById('prod-' + id);
+  if (activo) el.classList.remove('inactivo'); else el.classList.add('inactivo');
+  await fetch(SUPA_URL + '/rest/v1/carta?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({activo: activo})
+  });
+  const prod = cartaData.find(p => p.id === id);
+  if (prod) prod.activo = activo;
+}
+
+function precioChanged(id) {
+  document.getElementById('save-' + id).classList.add('visible');
+}
+
+async function savePrecio(id) {
+  const precio = parseFloat(document.getElementById('precio-' + id).value);
+  await fetch(SUPA_URL + '/rest/v1/carta?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({precio: precio})
+  });
+  document.getElementById('save-' + id).classList.remove('visible');
+  const prod = cartaData.find(p => p.id === id);
+  if (prod) prod.precio = precio;
+}
+
+loadPedidos();
+setInterval(loadPedidos, 30000);
 </script>
 </body>
 </html>
