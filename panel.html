@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Mare del Tano — Panel de Pedidos</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
+body { background: #f5f5f5; color: #111; }
+.header { background: #000; color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .sub { font-size: 13px; opacity: 0.6; margin-top: 2px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 1.25rem 1.5rem; background: #fff; border-bottom: 1px solid #eee; }
+.stat { background: #f9f9f9; border-radius: 8px; padding: 1rem; }
+.stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+.stat-value { font-size: 24px; font-weight: 600; }
+.filters { padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #eee; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-btn { font-size: 13px; padding: 6px 16px; border-radius: 999px; border: 1px solid #ddd; background: transparent; cursor: pointer; color: #555; }
+.filter-btn.active { background: #000; color: #fff; border-color: #000; }
+.refresh-btn { margin-left: auto; font-size: 13px; padding: 6px 16px; border-radius: 8px; border: 1px solid #ddd; background: transparent; cursor: pointer; color: #555; }
+.refresh-btn:hover { background: #f0f0f0; }
+.orders { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 10px; }
+.card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 1rem 1.25rem; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.order-id { font-size: 13px; font-weight: 600; font-family: monospace; }
+.order-time { font-size: 12px; color: #888; }
+.order-store { font-size: 12px; color: #888; margin-bottom: 10px; }
+.card-footer { display: flex; justify-content: space-between; align-items: center; }
+.badge { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 500; }
+.b-nuevo { background: #E6F1FB; color: #0C447C; }
+.b-preparando { background: #FAEEDA; color: #633806; }
+.b-listo { background: #EAF3DE; color: #27500A; }
+.b-entregado { background: #f0f0f0; color: #555; }
+.actions { display: flex; gap: 6px; }
+.btn { font-size: 12px; padding: 5px 14px; border-radius: 8px; border: 1px solid #ddd; background: transparent; cursor: pointer; color: #555; }
+.btn:hover { background: #f0f0f0; }
+.btn.primary { background: #000; color: #fff; border-color: #000; }
+.empty { text-align: center; padding: 3rem; color: #888; }
+.loading { text-align: center; padding: 2rem; color: #888; }
+.error { text-align: center; padding: 2rem; color: #E24B4A; }
+@media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>La Mare del Tano</h1>
+    <div class="sub" id="last-update">Cargando...</div>
+  </div>
+  <div style="font-size:13px;opacity:0.7">Uber Eats</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Total hoy</div><div class="stat-value" id="s-total">—</div></div>
+  <div class="stat"><div class="stat-label">Nuevos</div><div class="stat-value" id="s-nuevo">—</div></div>
+  <div class="stat"><div class="stat-label">Preparando</div><div class="stat-value" id="s-prep">—</div></div>
+  <div class="stat"><div class="stat-label">Entregados</div><div class="stat-value" id="s-ent">—</div></div>
+</div>
+<div class="filters">
+  <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
+  <button class="filter-btn" onclick="setFilter('nuevo',this)">Nuevos</button>
+  <button class="filter-btn" onclick="setFilter('preparando',this)">Preparando</button>
+  <button class="filter-btn" onclick="setFilter('listo',this)">Listos</button>
+  <button class="filter-btn" onclick="setFilter('entregado',this)">Entregados</button>
+  <button class="refresh-btn" onclick="load()">Actualizar</button>
+</div>
+<div class="orders" id="orders"><div class="loading">Conectando...</div></div>
+<script>
+const URL = 'https://viprsyiyapzcgmlqucvk.supabase.co';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcHJzeWl5YXB6Y2dtbHF1Y3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjg0MzcsImV4cCI6MjA5MDcwNDQzN30.3vyiXkGk55bb-sBCeNNRRzMBWDLcRejMwGQcvq2reV0';
+let all = [], filter = 'todos';
+const sLabels = {nuevo:'Nuevo',preparando:'Preparando',listo:'Listo',entregado:'Entregado'};
+const nxt = {nuevo:'preparando',preparando:'listo',listo:'entregado'};
+const nxtL = {nuevo:'Preparando',preparando:'Listo',listo:'Entregado'};
+function sid(id){ return id ? id.substring(0,8)+'...' : 'Sin ID'; }
+function fmt(ts){ return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function setFilter(f,btn){ filter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+async function upd(id,st){ await fetch(URL+'/rest/v1/pedidos_ubereats?id=eq.'+id,{method:'PATCH',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:st})}); load(); }
+function render(){
+  const today = new Date().toDateString();
+  const td = all.filter(o=>new Date(o.created_at).toDateString()===today);
+  document.getElementById('s-total').textContent = td.length;
+  document.getElementById('s-nuevo').textContent = td.filter(o=>o.status==='nuevo').length;
+  document.getElementById('s-prep').textContent = td.filter(o=>o.status==='preparando').length;
+  document.getElementById('s-ent').textContent = td.filter(o=>o.status==='entregado').length;
+  const list = filter==='todos' ? all : all.filter(o=>o.status===filter);
+  const el = document.getElementById('orders');
+  if(!list.length){ el.innerHTML='<div class="empty">No hay pedidos</div>'; return; }
+  el.innerHTML = list.map(o=>'<div class="card"><div class="card-header"><span class="order-id">#'+sid(o.order_id)+'</span><span class="order-time">'+fmt(o.created_at)+'</span></div><div class="order-store">'+sid(o.store_id)+'</div><div class="card-footer"><span class="badge b-'+o.status+'">'+sLabels[o.status]+'</span><div class="actions">'+(nxt[o.status]?'<button class="btn primary" onclick="upd(''+o.id+'',''+nxt[o.status]+'')">'+nxtL[o.status]+'</button>':'')+(o.status!=='entregado'?'<button class="btn" onclick="upd(''+o.id+'','entregado')">Entregado</button>':'')+'</div></div></div>').join('');
+}
+async function load(){
+  try{
+    const r = await fetch(URL+'/rest/v1/pedidos_ubereats?select=*&order=created_at.desc&limit=50',{headers:{'apikey':KEY,'Authorization':'Bearer '+KEY}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    all = await r.json();
+    document.getElementById('last-update').textContent = 'Actualizado: '+new Date().toLocaleTimeString('es-ES');
+    render();
+  }catch(e){ document.getElementById('orders').innerHTML='<div class="error">Error: '+e.message+'</div>'; }
+}
+load();
+setInterval(load,30000);
+</script>
+</body>
+</html>
