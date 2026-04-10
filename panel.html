@@ -65,39 +65,83 @@ body { background: #f5f5f5; color: #111; }
 </div>
 <div class="orders" id="orders"><div class="loading">Conectando...</div></div>
 <script>
-const URL = 'https://viprsyiyapzcgmlqucvk.supabase.co';
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcHJzeWl5YXB6Y2dtbHF1Y3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjg0MzcsImV4cCI6MjA5MDcwNDQzN30.3vyiXkGk55bb-sBCeNNRRzMBWDLcRejMwGQcvq2reV0';
+const SUPA_URL = 'https://viprsyiyapzcgmlqucvk.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcHJzeWl5YXB6Y2dtbHF1Y3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjg0MzcsImV4cCI6MjA5MDcwNDQzN30.3vyiXkGk55bb-sBCeNNRRzMBWDLcRejMwGQcvq2reV0';
 let all = [], filter = 'todos';
 const sLabels = {nuevo:'Nuevo',preparando:'Preparando',listo:'Listo',entregado:'Entregado'};
 const nxt = {nuevo:'preparando',preparando:'listo',listo:'entregado'};
 const nxtL = {nuevo:'Preparando',preparando:'Listo',listo:'Entregado'};
+
 function sid(id){ return id ? id.substring(0,8)+'...' : 'Sin ID'; }
 function fmt(ts){ return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 function setFilter(f,btn){ filter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
-async function upd(id,st){ await fetch(URL+'/rest/v1/pedidos_ubereats?id=eq.'+id,{method:'PATCH',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:st})}); load(); }
-function render(){
+
+async function upd(id, st) {
+  await fetch(SUPA_URL + '/rest/v1/pedidos_ubereats?id=eq.' + id, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({status: st})
+  });
+  load();
+}
+
+function cardHTML(o) {
+  const nextStatus = nxt[o.status];
+  const nextLabel = nxtL[o.status];
+  let actions = '';
+  if (nextStatus) {
+    actions += '<button class="btn primary" onclick="upd(' + o.id + ',\'' + nextStatus + '\')">' + nextLabel + '</button>';
+  }
+  if (o.status !== 'entregado') {
+    actions += '<button class="btn" onclick="upd(' + o.id + ',\'entregado\')">Entregado</button>';
+  }
+  return '<div class="card">' +
+    '<div class="card-header">' +
+      '<span class="order-id">#' + sid(o.order_id) + '</span>' +
+      '<span class="order-time">' + fmt(o.created_at) + '</span>' +
+    '</div>' +
+    '<div class="order-store">' + sid(o.store_id) + '</div>' +
+    '<div class="card-footer">' +
+      '<span class="badge b-' + o.status + '">' + sLabels[o.status] + '</span>' +
+      '<div class="actions">' + actions + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function render() {
   const today = new Date().toDateString();
-  const td = all.filter(o=>new Date(o.created_at).toDateString()===today);
+  const td = all.filter(o => new Date(o.created_at).toDateString() === today);
   document.getElementById('s-total').textContent = td.length;
-  document.getElementById('s-nuevo').textContent = td.filter(o=>o.status==='nuevo').length;
-  document.getElementById('s-prep').textContent = td.filter(o=>o.status==='preparando').length;
-  document.getElementById('s-ent').textContent = td.filter(o=>o.status==='entregado').length;
-  const list = filter==='todos' ? all : all.filter(o=>o.status===filter);
+  document.getElementById('s-nuevo').textContent = td.filter(o => o.status === 'nuevo').length;
+  document.getElementById('s-prep').textContent = td.filter(o => o.status === 'preparando').length;
+  document.getElementById('s-ent').textContent = td.filter(o => o.status === 'entregado').length;
+  const list = filter === 'todos' ? all : all.filter(o => o.status === filter);
   const el = document.getElementById('orders');
-  if(!list.length){ el.innerHTML='<div class="empty">No hay pedidos</div>'; return; }
-  el.innerHTML = list.map(o=>'<div class="card"><div class="card-header"><span class="order-id">#'+sid(o.order_id)+'</span><span class="order-time">'+fmt(o.created_at)+'</span></div><div class="order-store">'+sid(o.store_id)+'</div><div class="card-footer"><span class="badge b-'+o.status+'">'+sLabels[o.status]+'</span><div class="actions">'+(nxt[o.status]?'<button class="btn primary" onclick="upd(''+o.id+'',''+nxt[o.status]+'')">'+nxtL[o.status]+'</button>':'')+(o.status!=='entregado'?'<button class="btn" onclick="upd(''+o.id+'','entregado')">Entregado</button>':'')+'</div></div></div>').join('');
+  if (!list.length) { el.innerHTML = '<div class="empty">No hay pedidos</div>'; return; }
+  el.innerHTML = list.map(cardHTML).join('');
 }
-async function load(){
-  try{
-    const r = await fetch(URL+'/rest/v1/pedidos_ubereats?select=*&order=created_at.desc&limit=50',{headers:{'apikey':KEY,'Authorization':'Bearer '+KEY}});
-    if(!r.ok) throw new Error('HTTP '+r.status);
+
+async function load() {
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/pedidos_ubereats?select=*&order=created_at.desc&limit=50', {
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY}
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     all = await r.json();
-    document.getElementById('last-update').textContent = 'Actualizado: '+new Date().toLocaleTimeString('es-ES');
+    document.getElementById('last-update').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-ES');
     render();
-  }catch(e){ document.getElementById('orders').innerHTML='<div class="error">Error: '+e.message+'</div>'; }
+  } catch(e) {
+    document.getElementById('orders').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
+  }
 }
+
 load();
-setInterval(load,30000);
+setInterval(load, 30000);
 </script>
 </body>
 </html>
